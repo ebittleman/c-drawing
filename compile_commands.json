@@ -1,0 +1,18 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-ggdb",
+      "-Wall",
+      "-Werror",
+      "-mavx2",
+      "-o",
+      "./dist/drawing",
+      "./src/main.c"
+    ],
+    "directory": "/home/eric/workspace/c-drawing",
+    "file": "/home/eric/workspace/c-drawing/src/main.c",
+    "output": "/home/eric/workspace/c-drawing/dist/drawing"
+  }
+]

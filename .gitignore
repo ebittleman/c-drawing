@@ -1,2 +1,3 @@
 dist/
-
+cachecompile_commands.json
+.cache/
