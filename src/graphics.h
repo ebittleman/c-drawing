@@ -242,6 +242,7 @@ void render_fb(GLuint fb, int width, int height, int img_width,
 
 void *run(int width, int height, init_func init_func, update_func update_func) {
   GLFWwindow *window = init_window(width, height);
+
   void *ctx = init_func(width, height);
 
   double currentFrame = glfwGetTime();

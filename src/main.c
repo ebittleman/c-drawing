@@ -211,3 +211,18 @@ int main(void) {
   free(a);
   return 0;
 }
+
+
+int main1(void) {
+  mat4 dest, b;
+  vec4 src = {1.0, 2.0, 3.0, 0.f};
+  mat4_from_vec4_mul_outer(b, src, src);
+  mat4_scale(dest, b, 2.0);
+
+  print_vec(src, 4);
+  printf("\n");
+  print_matrix(b, 4);
+  printf("\n");
+  print_matrix(dest, 4);
+  return 0;
+}

@@ -23,6 +23,10 @@ void matrix_multiply_1x4_4x4(vec4 A, mat4 B, vec4 C);
 void mat4x4_rotate_Z(mat4 Q, mat4 const M, float angle);
 void mat4x4_ortho(mat4 M, float l, float r, float b, float t, float n, float f);
 
+void normalize_vec4(vec4 dest, vec4 src);
+void mat4_from_vec4_mul_outer(mat4 M, vec4 const a, vec4 const b);
+void mat4_scale(mat4 r, mat4 a, float s);
+
 static inline void mat4x4_dup(mat4 M, mat4 const N) {
   __m256 first = _mm256_loadu_ps(&N[0]);
   __m256 second = _mm256_loadu_ps(&N[8]);
@@ -90,6 +94,35 @@ void matrix_multiply_1x4_4x4(vec4 A, mat4 B, vec4 C) {
   }
 }
 
+void mat4_scale(mat4 r, mat4 a, float s) {
+  __m256 first = _mm256_loadu_ps(&a[0]);
+  __m256 second = _mm256_loadu_ps(&a[8]);
+  __m256 scale = _mm256_set1_ps(s);
+  first = _mm256_mul_ps(first, scale);
+  second = _mm256_mul_ps(second, scale);
+  _mm256_storeu_ps(&r[0], first);
+  _mm256_storeu_ps(&r[8], second);
+}
+
+void normalize_vec4(vec4 dest, vec4 src) {
+  __m128 a = _mm_loadu_ps(&src[0]);
+  __m128 b = _mm_loadu_ps(&src[0]);
+  __m128 c = _mm_dp_ps(a, b, 0xF1);
+
+  _mm_storeu_ps(&dest[0], c);
+  b = _mm_set_ps1(1 / sqrt(dest[0]));
+  _mm_storeu_ps(&dest[0], _mm_mul_ps(a, b));
+}
+
+void mat4_from_vec4_mul_outer(mat4 M, vec4 const a, vec4 const b) {
+  for (int i = 0; i < 4; i++) {
+    __m128 a_row = _mm_set_ps1(a[i]);
+    __m128 row = _mm_loadu_ps(&b[0]);
+    row = _mm_mul_ps(a_row, row);
+    _mm_storeu_ps(&M[i * 4], row);
+  }
+}
+
 const static mat4 _identity_matrix = {
     1, 0, 0, 0, //
     0, 1, 0, 0, //
@@ -119,15 +152,26 @@ void mat4x4_rotate_Z(mat4 Q, mat4 const M, float angle) {
   matrix_multiply_4x4(Q, M, R);
 }
 
-void mat4x4_ortho(mat4 M, float l, float r,
-		  float b, float t, float n,
+void mat4x4_ortho(mat4 M, float l, float r, float b, float t, float n,
                   float f) {
 
   mat4 A = {
-    2.f / (r - l), 0.f, 0.f, 0.f, //
-    0.f, 2.f / (t - b), 0.f, 0.f, //
-    0.f, 0.f, -2.f / (f - n), 0.f, //
-    -(r + l) / (r - l),  -(t + b) / (t - b),  -(f + n) / (f - n), 1.f, //
+      2.f / (r - l),
+      0.f,
+      0.f,
+      0.f, //
+      0.f,
+      2.f / (t - b),
+      0.f,
+      0.f, //
+      0.f,
+      0.f,
+      -2.f / (f - n),
+      0.f, //
+      -(r + l) / (r - l),
+      -(t + b) / (t - b),
+      -(f + n) / (f - n),
+      1.f, //
   };
 
   mat4x4_dup(M, A);
