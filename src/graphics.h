@@ -245,18 +245,18 @@ void *run(int width, int height, init_func init_func, update_func update_func) {
   double currentFrame = glfwGetTime();
   double lastFrame = currentFrame - 1e-3;
   double deltaTime;
-  struct timespec rem = {0};
+  //  struct timespec rem = {0};
 
   while (!glfwWindowShouldClose(window)) {
     currentFrame = glfwGetTime();
     deltaTime = currentFrame - lastFrame;
 
-    if (deltaTime < .04167) {
-      struct timespec req = {0, (.04167 - deltaTime) * 1e9};
-      nanosleep(&req, &rem);
-      currentFrame = glfwGetTime();
-      deltaTime = currentFrame - lastFrame;
-    }
+    /* if (deltaTime < .04167) { */
+    /*   struct timespec req = {0, (.04167 - deltaTime) * 1e9}; */
+    /*   nanosleep(&req, &rem); */
+    /*   currentFrame = glfwGetTime(); */
+    /*   deltaTime = currentFrame - lastFrame; */
+    /* } */
 
     lastFrame = currentFrame;
     glfwGetFramebufferSize(window, &width, &height);

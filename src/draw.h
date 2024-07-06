@@ -17,6 +17,7 @@
 #define RED 0xff0000ff
 #define BLUE 0xffff0000
 #define GREEN 0xff00ff00
+#define PURPLE 0xffff00ff
 
 typedef unsigned int color;
 
@@ -25,6 +26,7 @@ typedef struct {
   int w;
   int h;
   int stride;
+  color color;
 } canvas;
 
 typedef struct {
@@ -38,7 +40,6 @@ typedef struct {
 } Vector2d;
 
 typedef struct {
-  color color;
   int x;
   int y;
   int w;
@@ -58,7 +59,7 @@ void draw_rectangle(canvas canvas, const Rectangle *rect);
 void draw_rectangle(canvas canvas, const Rectangle *rect) {
   size_t rem = rect->w % 8;
 
-  __m256i color_group = _mm256_set1_epi32(rect->color);
+  __m256i color_group = _mm256_set1_epi32(canvas.color);
   for (size_t j = rect->y; j < rect->y+rect->h; ++j) {
     size_t offset = j * canvas.stride + rect->x;
     size_t scan_width = rect->w - rem;
@@ -67,7 +68,7 @@ void draw_rectangle(canvas canvas, const Rectangle *rect) {
     }
     offset += scan_width;
     for (size_t i = 0; i < rem; ++i){
-      canvas.pixels[offset+i] = rect->color;
+      canvas.pixels[offset+i] = canvas.color;
     }
   }
 }

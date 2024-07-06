@@ -10,6 +10,9 @@
 #define IOUTILS_IMPLEMENTATION
 #include "io-utils.h"
 
+#define OBJECTS_IMPLEMENTATION
+#include "objects.h"
+
 #define ARENA_IMPLEMENTATION
 #include "arena.h"
 
@@ -28,10 +31,10 @@
 
 #define ARENA_SIZE 10485760
 
-//#define CANVAS_WIDTH 1920
-//#define CANVAS_HEIGHT 1080
-#define CANVAS_WIDTH 800
-#define CANVAS_HEIGHT 600
+#define CANVAS_WIDTH 1920
+#define CANVAS_HEIGHT 1080
+// #define CANVAS_WIDTH 800
+// #define CANVAS_HEIGHT 600
 
 #define VELOCITY 240.0
 
@@ -43,45 +46,54 @@
 /*   .h = CANVAS_HEIGHT, */
 /* }; */
 
-static Rectangle rect1 = {
-    .color = RED,
-    .x = 0,
-    .y = 0,
-    .w = 100,
-    .h = 100,
-};
-static Vector2d vel = {VELOCITY, VELOCITY};
-
-void animate(double dt, Rectangle *rect, int bound_width, int bound_height) {
+void animate(objid id, double dt, Rectangle *rect, int bound_width,
+             int bound_height) {
 
   // calc new position
-  int new_x = vel.x * dt + rect->x;
-  int new_y = vel.y * dt + rect->y;
+  float values[15] = {0};
+  calc_next_pos(id, dt, values);
+
+  float new_x = values[9];
+  float new_y = values[10];
 
   // query collision
-  bool x_collision = (new_x < 0 || new_x + rect->w > bound_width);
-  bool y_collision = (new_y < 0 || new_y + rect->h > bound_height);
+  bool x_collision = (new_x < 0 || new_x + values[12] > bound_width);
+  bool y_collision = (new_y < 0 || new_y + values[13] > bound_height);
 
   // assign position and velocity based on collision
   if (x_collision) {
-    vel.x = -vel.x;
-  } else {
-    rect->x = new_x;
+    values[3] = -values[3];
+    values[9] = values[6];
   }
 
   if (y_collision) {
-    vel.y = -vel.y;
-  } else {
-    rect->y = new_y;
+    values[4] = -values[4];
+    values[10] = values[7];
   }
+
+  // commit updates
+  update_velocity(id, &values[3]);
+  update_position(id, &values[9]);
+
+  // assign position to rectangle
+  rect->x = floor(values[9]);
+  rect->y = floor(values[10]);
+  rect->w = floor(values[12]);
+  rect->h = floor(values[13]);
 }
 
 void draw(canvas g, double dt) {
 
   clear_canvas(g, DARK_GRAY);
+  Rectangle rect = {0};
 
-  animate(dt, &rect1, g.w, g.h);
-  draw_rectangle(g, &rect1);
+  animate(0, dt, &rect, g.w, g.h);
+  g.color = RED;
+  draw_rectangle(g, &rect);
+
+  animate(1, dt, &rect, g.w, g.h);
+  g.color = PURPLE;
+  draw_rectangle(g, &rect);
 
   draw_line(g, BLUE, (Vector2){50, 50}, (Vector2){300, 333});
   draw_line(g, RED, (Vector2){100, 400}, (Vector2){500, 400});
@@ -103,6 +115,7 @@ typedef struct {
   GLuint vbo;
   GLuint shader;
   GLint mvp_location;
+  objid rect;
 } Ctx;
 
 float *get_verts(void *ctx, size_t *num_elements) {
@@ -135,6 +148,20 @@ void *init(int width, int height) {
     exit(EXIT_FAILURE);
     return NULL;
   }
+
+  init_motion_tables(_arena);
+  objid rect = new_object((float[12]){
+      0.f, 0.f, 0.f,     //
+      250.f, 250.f, 0.f, //
+      0.f, 0.f, 0.f,     //
+      100.f, 100.f, 0.f, //
+  });
+  new_object((float[12]){
+      0.f, 500.f, 0.f,                 //
+      250.f, -250.f, 0.f,              //
+      0.f, CANVAS_HEIGHT - 100.f, 0.f, //
+      100.f, 100.f, 0.f,               //
+  });
 
   Ctx *ctx = arena_alloc(_arena, sizeof(Ctx));
 
@@ -177,6 +204,7 @@ void *init(int width, int height) {
       .vbo = vbo,
       .shader = program,
       .mvp_location = mvp_location,
+      .rect = rect,
   };
 
   return ctx;
@@ -187,8 +215,7 @@ void render(Ctx *ctx, int width, int height) {
   glClear(GL_COLOR_BUFFER_BIT);
 
   glUseProgram(0);
-  render_texture(ctx->texture, ctx->g->w, ctx->g->h,
-                 ctx->g->pixels);
+  render_texture(ctx->texture, ctx->g->w, ctx->g->h, ctx->g->pixels);
   render_fb(ctx->fb, width, height, ctx->g->w, ctx->g->h);
 
   const float ratio = width / (float)height;
@@ -197,8 +224,6 @@ void render(Ctx *ctx, int width, int height) {
   mat4x4_rotate_Z(m, m, (float)glfwGetTime());
   mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
   matrix_multiply_4x4(mvp, p, m);
-  // print_matrix(mvp, 4);
-  // exit(1);
 
   glUseProgram(ctx->shader);
   glUniformMatrix4fv(ctx->mvp_location, 1, GL_FALSE, (const GLfloat *)&mvp);

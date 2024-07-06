@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: -ferror-limit=9999
+  Add: [-ferror-limit=9999]
