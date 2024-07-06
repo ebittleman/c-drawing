@@ -70,15 +70,9 @@ void matmult_vec_4x4(mat4 A, vec4 B, vec4 C) {
     __m128 row = _mm_loadu_ps(&A[i * 4]);
 
     // Multiply row by vector
-    __m128 result = _mm_mul_ps(row, vec);
+    __m128 result = _mm_dp_ps(row, vec, 0xF1);
 
-    // Horizontally add the elements of the result to get the final dot product
-    // for this row
-    result = _mm_hadd_ps(result, result);
-    result = _mm_hadd_ps(result, result);
-
-    // Store the result in C[i]
-    _mm_store_ss(&C[i], result);
+    C[i] = _mm_cvtss_f32(result);
   }
 }
 

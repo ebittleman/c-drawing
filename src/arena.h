@@ -62,7 +62,7 @@ void *arena_alloc(arena *a, size_t s) {
   return new_data;
 }
 
-void arena_rewind(arena *a, size_t s) { a->size = s; }
+void arena_rewind(arena *a, size_t s) { a->size -= s; }
 
 void arena_free(arena *a) { free(a->data); }
 

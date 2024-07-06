@@ -2,6 +2,7 @@
 #define INCLUDE_GRAPHICS_H
 
 #include <stdio.h>
+#include <time.h>
 
 #include <immintrin.h>
 
@@ -97,10 +98,7 @@ GLuint init_shader(arena *a, const char *vert_shader, const char *frag_shader) {
 
   glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
   if (!success) {
-    glGetShaderInfoLog(vertex_shader,
-  	512,
-  	NULL,
-        infoLog);
+    glGetShaderInfoLog(vertex_shader, 512, NULL, infoLog);
     fprintf(stderr, "ERROR::VERTEX_SHADER::COMPILATION_FAILED\n%s\n", infoLog);
     glfwTerminate();
   }
@@ -117,11 +115,9 @@ GLuint init_shader(arena *a, const char *vert_shader, const char *frag_shader) {
 
   glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
   if (!success) {
-    glGetShaderInfoLog(fragment_shader,
-  	512,
-  	NULL,
-        infoLog);
-    fprintf(stderr, "ERROR::FRAGEMENT_SHADER::COMPILATION_FAILED\n%s\n", infoLog);
+    glGetShaderInfoLog(fragment_shader, 512, NULL, infoLog);
+    fprintf(stderr, "ERROR::FRAGEMENT_SHADER::COMPILATION_FAILED\n%s\n",
+            infoLog);
     glfwTerminate();
   }
 
@@ -154,7 +150,8 @@ GLuint init_indexed_vertex_buffer(void *ctx, vertex_provider vertex_func,
 
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices) * num_verts, vertices, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices) * num_verts, vertices,
+               GL_STATIC_DRAW);
 
   glGenBuffers(1, &ebo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
@@ -248,10 +245,19 @@ void *run(int width, int height, init_func init_func, update_func update_func) {
   double currentFrame = glfwGetTime();
   double lastFrame = currentFrame - 1e-3;
   double deltaTime;
+  struct timespec rem = {0};
 
   while (!glfwWindowShouldClose(window)) {
     currentFrame = glfwGetTime();
     deltaTime = currentFrame - lastFrame;
+
+    if (deltaTime < .04167) {
+      struct timespec req = {0, (.04167 - deltaTime) * 1e9};
+      nanosleep(&req, &rem);
+      currentFrame = glfwGetTime();
+      deltaTime = currentFrame - lastFrame;
+    }
+
     lastFrame = currentFrame;
     glfwGetFramebufferSize(window, &width, &height);
     glViewport(0, 0, width, height);
