@@ -29,7 +29,7 @@
 #define LINMATH_IMPLEMENTATION
 #include "linmath.h"
 
-#define ARENA_SIZE 10485760 // 10MB
+#define ARENA_SIZE 104857600 // 10MB
 
 #define CANVAS_FACTOR 120
 #define CANVAS_WIDTH CANVAS_FACTOR * 16
@@ -148,31 +148,11 @@ void *init(int width, int height) {
     return NULL;
   }
 
-  init_motion_tables(_arena);
-
-  /* new_object((float[12]){ */
-  /*     0.f, 0.f, 0.f,     // */
-  /*     250.f, 250.f, 0.f, // */
-  /*     0.f, 0.f, 0.f,     // */
-  /*     100.f, 100.f, 0.f, // */
-  /* }); */
-  /* new_object((float[12]){ */
-  /*     0.f, 500.f, 0.f,                 // */
-  /*     250.f, -250.f, 0.f,              // */
-  /*     0.f, CANVAS_HEIGHT - 200.f, 0.f, // */
-  /*     100.f, 100.f, 0.f,               // */
-  /* }); */
-
-  /* new_object((float[12]){ */
-  /*     500.f, -500.f, 0.f,              // */
-  /*     250.f, -250.f, 0.f,              // */
-  /*     0.f, CANVAS_HEIGHT - 300.f, 0.f, // */
-  /*     10.f, 10.f, 0.f,                 // */
-  /* }); */
+  init_motion_tables(_arena, 400000);
 
   objid num_items = 0;
-  for (int x = 0; x < 100; x++) {
-    float size = randf(0.f, 100.f);
+  for (int x = 0; x < 400000; x++) {
+    float size = randf(1.f, 3.f);
     num_items = new_object((float[12]){
         randf(-500.f, 500.f), randf(-500.f, 500.f), 0.f, //
         randf(-250.f, 250.f), randf(-250.f, 250.f), 0.f, //

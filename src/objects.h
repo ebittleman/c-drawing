@@ -7,7 +7,7 @@
 
 typedef unsigned int objid;
 
-void init_motion_tables(arena *a);
+void init_motion_tables(arena *a, size_t max_objects);
 objid new_object(float initial[12]);
 
 void calc_next_pos(size_t id, float dt, float values[15]);
@@ -49,11 +49,12 @@ objid new_object(float initial[12]) {
   return ++next_id;
 }
 
-void init_motion_tables(arena *a) {
-  acceleration_table = arena_alloc(a, 10000 * 3 * sizeof(float));
-  velocity_table = arena_alloc(a, 10000 * 3 * sizeof(float));
-  position_table = arena_alloc(a, 10000 * 3 * sizeof(float));
-  dimension_table = arena_alloc(a, 10000 * 3 * sizeof(float));
+void init_motion_tables(arena *a, size_t max_objects) {
+  size_t num_bytes = max_objects * 3 * sizeof(float);
+  acceleration_table = arena_alloc(a, num_bytes);
+  velocity_table = arena_alloc(a, num_bytes);
+  position_table = arena_alloc(a, num_bytes);
+  dimension_table = arena_alloc(a, num_bytes);
 }
 
 void calc_next_pos(size_t id, float dt, float values[15]) {
