@@ -29,22 +29,17 @@
 #define LINMATH_IMPLEMENTATION
 #include "linmath.h"
 
-#define ARENA_SIZE 10485760
+#define ARENA_SIZE 10485760 // 10MB
 
-#define CANVAS_WIDTH 1920
-#define CANVAS_HEIGHT 1080
-// #define CANVAS_WIDTH 800
-// #define CANVAS_HEIGHT 600
+#define CANVAS_FACTOR 120
+#define CANVAS_WIDTH CANVAS_FACTOR * 16
+#define CANVAS_HEIGHT CANVAS_FACTOR * 9
 
-#define VELOCITY 240.0
-
-/* static Rectangle CANVAS = { */
-/*   .color = 0xFF181818, */
-/*   .x = 0, */
-/*   .y = 0, */
-/*   .w = CANVAS_WIDTH, */
-/*   .h = CANVAS_HEIGHT, */
-/* }; */
+float randf(float min, float max) {
+  // 0 to RAND_MAX
+  float num = rand() / (float)RAND_MAX;
+  return lerp(min, max, num);
+}
 
 void animate(objid id, double dt, Rectangle *rect, int bound_width,
              int bound_height) {
@@ -82,27 +77,31 @@ void animate(objid id, double dt, Rectangle *rect, int bound_width,
   rect->h = floor(values[13]);
 }
 
-void draw(canvas g, double dt) {
+void draw(canvas g, objid num_items, double dt) {
 
   clear_canvas(g, DARK_GRAY);
   Rectangle rect = {0};
 
-  animate(0, dt, &rect, g.w, g.h);
+  for (objid x = 0; x < num_items; x++) {
+    animate(x, dt, &rect, g.w, g.h);
+    g.color = RED;
+    draw_rectangle(g, &rect);
+  }
+
+  g.color = BLUE;
+  draw_line(g, (Vector2){50, 50}, (Vector2){300, 333});
   g.color = RED;
-  draw_rectangle(g, &rect);
+  draw_line(g, (Vector2){100, 400}, (Vector2){500, 400});
+  draw_line(g, (Vector2){100, 400}, (Vector2){100, 600});
+  g.color = BLUE;
+  draw_line(g, (Vector2){50, 50}, (Vector2){15, 333});
+  g.color = GREEN;
+  draw_line(g, (Vector2){300, 40}, (Vector2){600, 60});
+  g.color = BLUE;
+  draw_line(g, (Vector2){300, 60}, (Vector2){600, 40});
 
-  animate(1, dt, &rect, g.w, g.h);
-  g.color = PURPLE;
-  draw_rectangle(g, &rect);
-
-  draw_line(g, BLUE, (Vector2){50, 50}, (Vector2){300, 333});
-  draw_line(g, RED, (Vector2){100, 400}, (Vector2){500, 400});
-  draw_line(g, RED, (Vector2){100, 400}, (Vector2){100, 600});
-  draw_line(g, BLUE, (Vector2){50, 50}, (Vector2){15, 333});
-  draw_line(g, GREEN, (Vector2){300, 40}, (Vector2){600, 60});
-  draw_line(g, BLUE, (Vector2){300, 60}, (Vector2){600, 40});
-
-  draw_triangle(g, GREEN, (Vector2){200, 200}, (Vector2){150, 300},
+  g.color = GREEN;
+  draw_triangle(g, (Vector2){200, 200}, (Vector2){150, 300},
                 (Vector2){250, 250});
 }
 
@@ -115,7 +114,7 @@ typedef struct {
   GLuint vbo;
   GLuint shader;
   GLint mvp_location;
-  objid rect;
+  objid num_items;
 } Ctx;
 
 float *get_verts(void *ctx, size_t *num_elements) {
@@ -150,18 +149,38 @@ void *init(int width, int height) {
   }
 
   init_motion_tables(_arena);
-  objid rect = new_object((float[12]){
-      0.f, 0.f, 0.f,     //
-      250.f, 250.f, 0.f, //
-      0.f, 0.f, 0.f,     //
-      100.f, 100.f, 0.f, //
-  });
-  new_object((float[12]){
-      0.f, 500.f, 0.f,                 //
-      250.f, -250.f, 0.f,              //
-      0.f, CANVAS_HEIGHT - 100.f, 0.f, //
-      100.f, 100.f, 0.f,               //
-  });
+
+  /* new_object((float[12]){ */
+  /*     0.f, 0.f, 0.f,     // */
+  /*     250.f, 250.f, 0.f, // */
+  /*     0.f, 0.f, 0.f,     // */
+  /*     100.f, 100.f, 0.f, // */
+  /* }); */
+  /* new_object((float[12]){ */
+  /*     0.f, 500.f, 0.f,                 // */
+  /*     250.f, -250.f, 0.f,              // */
+  /*     0.f, CANVAS_HEIGHT - 200.f, 0.f, // */
+  /*     100.f, 100.f, 0.f,               // */
+  /* }); */
+
+  /* new_object((float[12]){ */
+  /*     500.f, -500.f, 0.f,              // */
+  /*     250.f, -250.f, 0.f,              // */
+  /*     0.f, CANVAS_HEIGHT - 300.f, 0.f, // */
+  /*     10.f, 10.f, 0.f,                 // */
+  /* }); */
+
+  objid num_items = 0;
+  for (int x = 0; x < 100; x++) {
+    float size = randf(0.f, 100.f);
+    num_items = new_object((float[12]){
+        randf(-500.f, 500.f), randf(-500.f, 500.f), 0.f, //
+        randf(-250.f, 250.f), randf(-250.f, 250.f), 0.f, //
+        randf(0.f, CANVAS_WIDTH - size), randf(0.f, CANVAS_HEIGHT - size),
+        0.f,             //
+        size, size, 0.f, //
+    });
+  }
 
   Ctx *ctx = arena_alloc(_arena, sizeof(Ctx));
 
@@ -204,7 +223,7 @@ void *init(int width, int height) {
       .vbo = vbo,
       .shader = program,
       .mvp_location = mvp_location,
-      .rect = rect,
+      .num_items = num_items,
   };
 
   return ctx;
@@ -235,7 +254,7 @@ void render(Ctx *ctx, int width, int height) {
 void update(void *ctx, int width, int height, double dt) {
   Ctx *_ctx = (Ctx *)ctx;
 
-  draw(*_ctx->g, dt);
+  draw(*_ctx->g, _ctx->num_items, dt);
   render(_ctx, width, height);
 }
 

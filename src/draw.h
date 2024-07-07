@@ -18,6 +18,7 @@
 #define BLUE 0xffff0000
 #define GREEN 0xff00ff00
 #define PURPLE 0xffff00ff
+#define CYAN 0xffffff00
 
 typedef unsigned int color;
 
@@ -46,10 +47,12 @@ typedef struct {
   int h;
 } Rectangle;
 
+int lerp(int v0, int v1, float t);
+
 int save_canvas(const char *filename, canvas canvas);
-void draw_triangle(canvas canvas, color color, Vector2 p1, Vector2 p2,
+void draw_triangle(canvas canvas, Vector2 p1, Vector2 p2,
                    Vector2 p3);
-void draw_line(canvas canvas, color color, Vector2 p1, Vector2 p2);
+void draw_line(canvas canvas, Vector2 p1, Vector2 p2);
 void clear_canvas(canvas canvas, color color);
 void draw_rectangle(canvas canvas, const Rectangle *rect);
 #endif
@@ -107,7 +110,7 @@ Vector2d line_eq(Vector2 p1, Vector2 p2) {
   };
 }
 
-void draw_line(canvas canvas, color color, Vector2 p1, Vector2 p2) {
+void draw_line(canvas canvas, Vector2 p1, Vector2 p2) {
   int start_x = p1.x < p2.x ? p1.x : p2.x;
   int end_x = p2.x == start_x ? p1.x : p2.x;
 
@@ -124,7 +127,7 @@ void draw_line(canvas canvas, color color, Vector2 p1, Vector2 p2) {
     int end = end_y >= start_y ? end_y : start_y;
     int start = end_y == end ? start_y : end_y;
     for (int y = start; y <= end; y++) {
-      canvas.pixels[y * canvas.stride + start_x] = color;
+      canvas.pixels[y * canvas.stride + start_x] = canvas.color;
     }
     return;
   }
@@ -135,21 +138,21 @@ void draw_line(canvas canvas, color color, Vector2 p1, Vector2 p2) {
   if (abs(dx) >= abs(dy)) {
     for (int x = start_x; x <= end_x; x++) {
       int y = (int)(m * x + b);
-      canvas.pixels[y * canvas.stride + x] = color;
+      canvas.pixels[y * canvas.stride + x] = canvas.color;
     }
   } else {
     int end = end_y >= start_y ? end_y : start_y;
     int start = end_y == end ? start_y : end_y;
     for (int y = start; y <= end; y++) {
       int x = (int)((y - b) / m);
-      canvas.pixels[y * canvas.stride + x] = color;
+      canvas.pixels[y * canvas.stride + x] = canvas.color;
     }
   }
 }
 
 int lerp(int v0, int v1, float t) { return (1 - t) * v0 + t * v1; }
 
-void draw_triangle(canvas canvas, color color, Vector2 p1, Vector2 p2,
+void draw_triangle(canvas canvas, Vector2 p1, Vector2 p2,
                    Vector2 p3) {
 
   Vector2 *vecs[3] = {&p1, &p2, &p3};
@@ -183,7 +186,7 @@ void draw_triangle(canvas canvas, color color, Vector2 p1, Vector2 p2,
   for (int y = min.y + 1; y < mid.y; ++y) {
     int x1 = (y - l1.y) / l1.x;
     int x2 = (y - l2.y) / l2.x;
-    draw_line(canvas, color,
+    draw_line(canvas,
               (Vector2){
                   .x = x1,
                   .y = y,
@@ -200,7 +203,7 @@ void draw_triangle(canvas canvas, color color, Vector2 p1, Vector2 p2,
   for (int y = mid.y; y < max.y; ++y) {
     int x1 = (y - l1.y) / l1.x;
     int x2 = (y - l2.y) / l2.x;
-    draw_line(canvas, color,
+    draw_line(canvas,
               (Vector2){
                   .x = x1,
                   .y = y,
@@ -211,9 +214,9 @@ void draw_triangle(canvas canvas, color color, Vector2 p1, Vector2 p2,
               });
   }
 
-  draw_line(canvas, color, p1, p2);
-  draw_line(canvas, color, p2, p3);
-  draw_line(canvas, color, p3, p1);
+  draw_line(canvas, p1, p2);
+  draw_line(canvas, p2, p3);
+  draw_line(canvas, p3, p1);
 }
 
 int save_canvas(const char *filename, canvas canvas) {
