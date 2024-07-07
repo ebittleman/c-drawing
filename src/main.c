@@ -29,14 +29,15 @@
 #define LINMATH_IMPLEMENTATION
 #include "linmath.h"
 
-#define ARENA_SIZE 104857600 // 10MB
+#define ARENA_SIZE 10485760 // 10MB
+
+#define NUM_OBJECTS 250
 
 #define CANVAS_FACTOR 120
 #define CANVAS_WIDTH CANVAS_FACTOR * 16
 #define CANVAS_HEIGHT CANVAS_FACTOR * 9
 
 float randf(float min, float max) {
-  // 0 to RAND_MAX
   float num = rand() / (float)RAND_MAX;
   return lerp(min, max, num);
 }
@@ -79,25 +80,26 @@ void animate(objid id, double dt, Rectangle *rect, int bound_width,
 
 void draw(canvas g, objid num_items, double dt) {
 
+  // clear_canvas(g, 0xFFFFFFFF);
   clear_canvas(g, DARK_GRAY);
-  Rectangle rect = {0};
 
+  Rectangle rect = {0};
   for (objid x = 0; x < num_items; x++) {
     animate(x, dt, &rect, g.w, g.h);
     g.color = RED;
     draw_rectangle(g, &rect);
   }
 
-  g.color = BLUE;
+  g.color = CYAN;
   draw_line(g, (Vector2){50, 50}, (Vector2){300, 333});
   g.color = RED;
   draw_line(g, (Vector2){100, 400}, (Vector2){500, 400});
   draw_line(g, (Vector2){100, 400}, (Vector2){100, 600});
-  g.color = BLUE;
+  g.color = CYAN;
   draw_line(g, (Vector2){50, 50}, (Vector2){15, 333});
   g.color = GREEN;
   draw_line(g, (Vector2){300, 40}, (Vector2){600, 60});
-  g.color = BLUE;
+  g.color = CYAN;
   draw_line(g, (Vector2){300, 60}, (Vector2){600, 40});
 
   g.color = GREEN;
@@ -148,17 +150,17 @@ void *init(int width, int height) {
     return NULL;
   }
 
-  init_motion_tables(_arena, 400000);
+  init_motion_tables(_arena, NUM_OBJECTS);
 
   objid num_items = 0;
-  for (int x = 0; x < 400000; x++) {
-    float size = randf(1.f, 3.f);
+  for (int x = 0; x < NUM_OBJECTS; x++) {
+    float size = randf(15.f, 30.f);
     num_items = new_object((float[12]){
-        randf(-500.f, 500.f), randf(-500.f, 500.f), 0.f, //
-        randf(-250.f, 250.f), randf(-250.f, 250.f), 0.f, //
+        randf(-500.f, 500.f), randf(-500.f, 500.f), 0.f, // acceleration
+        randf(-250.f, 250.f), randf(-250.f, 250.f), 0.f, // velocity
         randf(0.f, CANVAS_WIDTH - size), randf(0.f, CANVAS_HEIGHT - size),
-        0.f,             //
-        size, size, 0.f, //
+        0.f,             // position
+        size, size, 0.f, // dimensions
     });
   }
 
