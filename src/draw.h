@@ -89,15 +89,30 @@ void clear_canvas(canvas canvas, color color) {
   }
 }
 
-static inline color brightness(color c, float alpha) {
+int lerp(int v0, int v1, float t) { return (1 - t) * v0 + t * v1; }
+
+void interpolate(float *ds, float i0, float d0, float i1, float d1) {
+  if (i0 == i1) {
+    ds[0] = d0;
+    return;
+  }
+  float a = (d1 - d0) / (i1 - i0);
+  float d = d0;
+  for (int i = i0; i <= i1; ++i) {
+    ds[i - (int)i0] = d;
+    d = d + a;
+  }
+}
+
+static inline color alpha_composite(color c, color bg, float alpha) {
   if (alpha >= 1.f) {
     return c;
   }
   float ab = 1.f - alpha;
 
-  float bg_r = 24.f * alpha;
-  float bg_g = 24.f * alpha;
-  float bg_b = 24.f * alpha;
+  float bg_r = (float)(bg & 0xff) * alpha;
+  float bg_g = (float)((bg >> 8) & 0xff) * alpha;
+  float bg_b = (float)((bg >> 16) & 0xff) * alpha;
 
   int r = c & 0xff;
   int g = (c >> 8) & 0xff;
@@ -122,41 +137,12 @@ static inline void swap(int *a, int *b) {
   *b = tmp;
 }
 
-Vector2d line_eq(Vector2 p1, Vector2 p2) {
+bool line_eq(Vector2 *a, Vector2 *b, float eq[2]) {
 
-  if (p1.x > p2.x) {
-    swap(&p1.x, &p2.x);
-    swap(&p1.y, &p2.y);
-  }
+  Vector2 p1 = *a;
+  Vector2 p2 = *b;
 
-  int dx = p2.x - p1.x;
-  int dy = p2.y - p1.y;
-
-  if (dy == 0 && dx == 0)
-    return (Vector2d){0};
-
-  float m = 1.f;
-  if (dx > 0)
-    m = (float)dy / (float)dx;
-  float b = (float)p2.y - (p2.x * m);
-
-  return (Vector2d){
-      .x = m,
-      .y = b,
-  };
-}
-
-float f_part(float a) {
-  if (a > 0)
-    return a - (int)a;
-  return a - ((int)a + 1);
-}
-
-void draw_line(canvas canvas, Vector2 p1, Vector2 p2) {
-
-  // printf("p1: %d, %d x p2: %d, %d\n", p1.x, p1.y, p2.x, p2.y);
-
-  bool steep = (abs(p2.y - p1.y) - abs(p2.x - p1.x) > 0);
+  bool steep = (abs(p2.y - p1.y) - abs(p2.x - p1.x)) > 0;
   if (steep) {
     swap(&p1.x, &p1.y);
     swap(&p2.x, &p2.y);
@@ -170,136 +156,128 @@ void draw_line(canvas canvas, Vector2 p1, Vector2 p2) {
   int dx = p2.x - p1.x;
   int dy = p2.y - p1.y;
 
-  if (dy == 0 && dx == 0)
-    return;
-
-  // horizontal line
-  if (dy == 0 && !steep) {
-    for (int i = p1.x; i <= p2.x; ++i) {
-      canvas.pixels[p1.y * canvas.stride + i] = canvas.color;
-    }
-    return;
+  if (dy == 0 && dx == 0) {
+    eq[0] = 0;
+    eq[1] = 0;
+    return false;
   }
 
-  // vertical line
-  if (dy == 0 && steep) {
-    for (int j = p1.x; j <= p2.x; ++j) {
-      canvas.pixels[j * canvas.stride + p1.y] = canvas.color;
-    }
-    return;
-  }
-
-  float m = 1.f;
+  eq[0] = 1.f;
   if (dx > 0)
-    m = (float)dy / dx;
+    eq[0] = (float)dy / (float)dx;
+  eq[1] = (float)p2.y - ((float)p2.x * eq[0]);
 
-  int x_start = p1.x;
-  int x_end = p2.x;
-  float y = p1.y;
-  color c = canvas.color;
+  *a = p1;
+  *b = p2;
+  return steep;
+}
 
-  // scan vertically
-  if (steep) {
-    for (int x = x_start; x <= x_end; ++x) {
+float f_part(float a) {
+  if (a > 0)
+    return a - (int)a;
+  return a - ((int)a + 1);
+}
+
+void draw_line(canvas canvas, Vector2 p0, Vector2 p1) {
+  if (abs(p1.x - p0.x) > abs(p1.y - p0.y)) {
+    // Line is horizontal-ish
+    // Make sure x0 < x1
+    if (p0.x > p1.x) {
+      swap(&p0.x, &p1.x);
+      swap(&p0.y, &p1.y);
+    }
+    const int length = p1.x - p0.x + 1;
+    float ys[length];
+    interpolate(&ys[0], p0.x, p0.y, p1.x, p1.y);
+    for (int x = p0.x; x <= p1.x; ++x) {
+      float y = ys[x - p0.x];
+
       float fpart = f_part(y);
       float rpart = 1.f - fpart;
 
-      color c1 = brightness(c, rpart);
-      color c2 = brightness(c, fpart);
+      size_t p1 = (size_t)y * canvas.stride + x;
+      size_t p2 = ((size_t)y - 1) * canvas.stride + x;
 
-      canvas.pixels[x * canvas.stride + (size_t)y] = c1;
-      canvas.pixels[x * canvas.stride + (size_t)y - 1] = c2;
+      color c1 = alpha_composite(canvas.color, canvas.pixels[p1], rpart);
+      color c2 = alpha_composite(canvas.color, canvas.pixels[p2], fpart);
 
-      y += m;
+      canvas.pixels[p1] = c1;
+      canvas.pixels[p2] = c2;
+
+      // canvas.pixels[(int) * canvas.stride + x] = canvas.color;
     }
-    return;
-  }
+  } else {
+    // Line is vertical-ish
+    // Make sure y0 < y1
+    if (p0.y > p1.y) {
+      swap(&p0.x, &p1.x);
+      swap(&p0.y, &p1.y);
+    }
+    const int length = p1.y - p0.y + 1;
+    float xs[length];
+    interpolate(&xs[0], p0.y, p0.x, p1.y, p1.x);
+    for (int y = p0.y; y <= p1.y; ++y) {
+      float x = xs[y - p0.y];
 
-  // scan horizontally
-  for (int x = x_start; x <= x_end; ++x) {
-    float fpart = f_part(y);
-    float rpart = 1.f - fpart;
+      float fpart = f_part(x);
+      float rpart = 1.f - fpart;
 
-    color c1 = brightness(c, rpart);
-    color c2 = brightness(c, fpart);
+      size_t p1 = y * canvas.stride + (size_t)x;
+      size_t p2 = y * canvas.stride + (size_t)x - 1;
 
-    canvas.pixels[(size_t)y * canvas.stride + x] = c1;
-    canvas.pixels[((size_t)y - 1) * canvas.stride + x] = c2;
+      color c1 = alpha_composite(canvas.color, canvas.pixels[p1], rpart);
+      color c2 = alpha_composite(canvas.color, canvas.pixels[p2], fpart);
 
-    y += m;
+      canvas.pixels[p1] = c1;
+      canvas.pixels[p2] = c2;
+    }
   }
 }
 
-int lerp(int v0, int v1, float t) { return (1 - t) * v0 + t * v1; }
+void draw_triangle(canvas canvas, Vector2 p0, Vector2 p1, Vector2 p2) {
+  if (p1.y < p0.y) {
+    swap(&p1.x, &p0.x);
+    swap(&p1.y, &p0.y);
+  }
+  if (p2.y < p0.y) {
+    swap(&p2.x, &p0.x);
+    swap(&p2.y, &p0.y);
+  }
+  if (p2.y < p1.y) {
+    swap(&p2.x, &p1.x);
+    swap(&p2.y, &p1.y);
+  }
 
-void draw_triangle(canvas canvas, Vector2 p1, Vector2 p2, Vector2 p3) {
+  const int length = p2.y - p0.y + 1;
+  float xs1[length];
+  float xs2[length];
+  interpolate(&xs1[0], p0.y, p0.x, p1.y, p1.x);
+  interpolate(&xs1[p1.y - p0.y], p1.y, p1.x, p2.y, p2.x);
+  interpolate(&xs2[0], p0.y, p0.x, p2.y, p2.x);
 
-  draw_line(canvas, p1, p2);
-  draw_line(canvas, p2, p3);
-  draw_line(canvas, p3, p1);
+  size_t m = length / 2;
+  float *left = &xs1[0];
+  float *right = &xs2[0];
+  if (xs2[m] < xs1[m]) {
+    left = &xs2[0];
+    right = &xs1[0];
+  }
 
-  Vector2 *vecs[3] = {&p1, &p2, &p3};
-  for (int x = 0; x < 3; x++) {
-    Vector2 *c = vecs[x];
-    if (c->y < vecs[0]->y) {
-      Vector2 *tmp = vecs[0];
-      vecs[0] = c;
-      vecs[x] = tmp;
-      x--;
+  for (int y = p0.y; y <= p2.y; ++y) {
+    int start = left[y - p0.y];
+    int end = right[y - p0.y];
+    int yoffset = y * canvas.stride;
+    for (int x = start; x <= end; ++x) {
+      canvas.pixels[yoffset + x] = canvas.color;
     }
-    if (c->y > vecs[2]->y) {
-      Vector2 *tmp = vecs[2];
-      vecs[2] = c;
-      vecs[x] = tmp;
-      x--;
-    }
   }
 
-  Vector2 min = *vecs[0];
-  Vector2 med = *vecs[1];
-  Vector2 max = *vecs[2];
-  Vector2 mid = {
-      lerp(min.x, max.x, .5),
-      lerp(min.y, max.y, .5),
-  };
-
-  Vector2d l1 = line_eq(min, mid);
-  Vector2d l2 = line_eq(min, med);
-
-  for (int y = min.y + 1; y < mid.y; ++y) {
-    int x1 = (y - l1.y) / l1.x;
-    int x2 = (y - l2.y) / l2.x;
-    draw_line(canvas,
-              (Vector2){
-                  .x = x1,
-                  .y = y,
-              },
-              (Vector2){
-                  .x = x2,
-                  .y = y,
-              });
-  }
-
-  l1 = line_eq(mid, max);
-  l2 = line_eq(med, max);
-
-  for (int y = mid.y; y < max.y; ++y) {
-    int x1 = (y - l1.y) / l1.x;
-    int x2 = (y - l2.y) / l2.x;
-    draw_line(canvas,
-              (Vector2){
-                  .x = x1,
-                  .y = y,
-              },
-              (Vector2){
-                  .x = x2,
-                  .y = y,
-              });
-  }
-
+  //  canvas.color = BLUE;
+  // draw_line(canvas, p0, p1);
+  // canvas.color = GREEN;
   // draw_line(canvas, p1, p2);
-  // draw_line(canvas, p2, p3);
-  // draw_line(canvas, p3, p1);
+  // canvas.color = RED;
+  // draw_line(canvas, p0, p2);
 }
 
 int save_canvas(const char *filename, canvas canvas) {

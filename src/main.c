@@ -85,7 +85,9 @@ void draw(canvas g, objid num_items, double dt) {
 
   Rectangle rect = {0};
   for (objid x = 0; x < num_items; x++) {
+
     animate(x, dt, &rect, g.w, g.h);
+
     g.color = RED;
     draw_rectangle(g, &rect);
   }
@@ -103,8 +105,15 @@ void draw(canvas g, objid num_items, double dt) {
   draw_line(g, (Vector2){300, 60}, (Vector2){600, 40});
 
   g.color = GREEN;
-  draw_triangle(g, (Vector2){200, 200}, (Vector2){150, 300},
-                (Vector2){250, 250});
+  draw_triangle(g, (Vector2){50, 50}, (Vector2){5, 100},
+                (Vector2){100, 60});
+  g.color = GREEN;
+  draw_triangle(g, (Vector2){150, 50}, (Vector2){175, 75},
+                (Vector2){200, 50});
+
+  g.color = GREEN;
+  draw_triangle(g, (Vector2){150, 100}, (Vector2){175, 75},
+                (Vector2){200, 100});
 }
 
 typedef struct {
@@ -229,7 +238,7 @@ void render(Ctx *ctx, int width, int height) {
   glUseProgram(ctx->shader);
   glUniformMatrix4fv(ctx->mvp_location, 1, GL_FALSE, (const GLfloat *)&mvp);
   glBindVertexArray(ctx->vao);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+  // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
   glBindVertexArray(0);
 }
 
