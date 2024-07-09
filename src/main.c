@@ -31,11 +31,13 @@
 
 #define ARENA_SIZE 10485760 // 10MB
 
-#define NUM_OBJECTS 250
+#define NUM_OBJECTS 20
 
 #define CANVAS_FACTOR 120
 #define CANVAS_WIDTH CANVAS_FACTOR * 16
 #define CANVAS_HEIGHT CANVAS_FACTOR * 9
+
+#define PI 3.1415926535
 
 float randf(float min, float max) {
   float num = rand() / (float)RAND_MAX;
@@ -78,6 +80,21 @@ void animate(objid id, double dt, Rectangle *rect, int bound_width,
   rect->h = floor(values[13]);
 }
 
+void rotate_triangle(Vector2 *p0, Vector2 *p1, Vector2 *p2, double dt) {
+  float r1[2], r2[2], r3[2];
+
+  vec2_rotate(r1, (float[2]){p0->x - p2->x, p0->y - p2->y}, dt);
+  vec2_rotate(r2, (float[2]){p1->x - p2->x, p1->y - p2->y}, dt);
+  vec2_rotate(r3, (float[2]){p2->x - p2->x, p2->y - p2->y}, dt);
+
+  p0->x = r1[0] + p2->x;
+  p0->y = r1[1] + p2->y;
+  p1->x = r2[0] + p2->x;
+  p1->y = r2[1] + p2->y;
+  p2->x = r3[0] + p2->x;
+  p2->y = r3[1] + p2->y;
+}
+
 void draw(canvas g, objid num_items, double dt) {
 
   // clear_canvas(g, 0xFFFFFFFF);
@@ -104,14 +121,19 @@ void draw(canvas g, objid num_items, double dt) {
   g.color = CYAN;
   draw_line(g, (Vector2){300, 60}, (Vector2){600, 40});
 
+  Vector2 p0 = {500, 150};
+  Vector2 p1 = {505, 200};
+  Vector2 p2 = {600, 160};
+  static double angle = 0;
+  angle += PI * dt;
+  rotate_triangle(&p0, &p1, &p2, angle);
   g.color = GREEN;
-  draw_triangle(g, (Vector2){50, 50}, (Vector2){5, 100},
-                (Vector2){100, 60});
-  g.color = GREEN;
-  draw_triangle(g, (Vector2){150, 50}, (Vector2){175, 75},
-                (Vector2){200, 50});
+  draw_triangle(g, p0, p1, p2);
 
-  g.color = GREEN;
+  g.color = PURPLE;
+  draw_triangle(g, (Vector2){150, 50}, (Vector2){175, 75}, (Vector2){200, 50});
+
+  g.color = CYAN;
   draw_triangle(g, (Vector2){150, 100}, (Vector2){175, 75},
                 (Vector2){200, 100});
 }

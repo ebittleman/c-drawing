@@ -20,6 +20,7 @@ void rotate(mat4 A, mat4 B, mat4 C);
 void matrix_multiply_4x4(mat4 R, const mat4 A, const mat4 B);
 void matmult_vec_4x4(mat4 A, vec4 B, vec4 C);
 void matrix_multiply_1x4_4x4(vec4 A, mat4 B, vec4 C);
+void vec2_rotate(float r[2], float v[2], float angle);
 void mat4x4_rotate_Z(mat4 Q, mat4 const M, float angle);
 void mat4x4_ortho(mat4 M, float l, float r, float b, float t, float n, float f);
 
@@ -130,6 +131,14 @@ void translate(mat4 m, float x, float y, float z) {
   identity_matrix(m);
   __m128 row = _mm_setr_ps(x, y, z, 1);
   _mm_storeu_ps(&m[12], row);
+}
+
+void vec2_rotate(float r[2], float v[2], float angle) {
+  float s = sinf(angle);
+  float c = cosf(angle);
+
+  r[0] = v[0] * c - v[1] * s;
+  r[1] = v[0] * s + v[1] * c;
 }
 
 void mat4x4_rotate_Z(mat4 Q, mat4 const M, float angle) {
